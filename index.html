@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2a0d24">
+<title>Trivia JS: Reto Definitivo MF0951_2</title>
+<style>
+:root{
+  --bg1:#1c0a18;--bg2:#32102c;--bg3:#12081a;
+  --card:rgba(255,255,255,.07);--card-b:rgba(255,255,255,.14);
+  --txt:#f1f0ff;--muted:#a9a6d6;
+  --pri:#ff7a3d;--pri2:#ff3d81;--acc:#ffd23f;
+  --ok:#22c55e;--ok-bg:rgba(34,197,94,.16);
+  --bad:#ef4444;--bad-bg:rgba(239,68,68,.16);
+  --info:#2dd4bf;
+  --r:20px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;
+  color:var(--txt);
+  background:radial-gradient(1200px 600px at 10% -10%,#ff3d8144,transparent 60%),
+             radial-gradient(900px 500px at 110% 10%,#ff7a3d33,transparent 60%),
+             linear-gradient(160deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+  background-attachment:fixed;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  line-height:1.45;
+}
+#app{max-width:760px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:14px 14px 0}
+.screen{display:none;flex:1;flex-direction:column;animation:fade .35s ease}
+.screen.active{display:flex}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--r);
+  box-shadow:0 12px 40px rgba(0,0,0,.35);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.btn{font:inherit;font-weight:800;border:0;color:#fff;cursor:pointer;border-radius:18px;
+  padding:18px 26px;font-size:1.1rem;min-height:58px;
+  background:linear-gradient(135deg,var(--pri),var(--pri2));
+  box-shadow:0 8px 0 #a82a55,0 16px 30px rgba(255,61,129,.4);
+  transition:transform .1s,box-shadow .1s;touch-action:manipulation}
+.btn:active{transform:translateY(6px);box-shadow:0 2px 0 #a82a55,0 6px 14px rgba(255,61,129,.35)}
+.btn:focus-visible,.opt:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+
+/* Welcome / End */
+.hero{margin:auto 0;text-align:center;padding:34px 22px}
+.logo{font-size:3.4rem;filter:drop-shadow(0 6px 14px rgba(255,122,61,.7))}
+.hero h1{font-size:clamp(1.7rem,6.5vw,2.5rem);line-height:1.15;margin:10px 0 12px;
+  background:linear-gradient(90deg,#fff,#ffc9a8 50%,#ffe08a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--muted);margin-bottom:22px;font-size:1.02rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:26px}
+.chip{background:rgba(255,255,255,.09);border:1px solid var(--card-b);padding:6px 12px;border-radius:99px;font-size:.85rem;color:#ddd8ff}
+.hero .btn{width:100%;max-width:380px}
+.rules{margin-top:18px;font-size:.85rem;color:var(--muted)}
+
+/* HUD */
+.hud{position:sticky;top:0;z-index:5;padding:6px 0 10px;
+  background:linear-gradient(180deg,var(--bg1) 70%,transparent)}
+.hud-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-weight:700}
+.pill{background:var(--card);border:1px solid var(--card-b);padding:7px 14px;border-radius:99px;font-size:.92rem;white-space:nowrap}
+.pill b{color:var(--acc)}
+.streak{display:none;color:#ffb347}
+.streak.on{display:inline-block;animation:pop .4s}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+.bar{height:12px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.bar>i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--pri),var(--info));transition:width .5s cubic-bezier(.3,.9,.3,1)}
+
+/* Question */
+.qwrap{flex:1;display:flex;flex-direction:column;gap:14px;padding-bottom:16px}
+.qcard{padding:22px 20px}
+.qnum{color:var(--info);font-weight:800;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.qtext{font-size:clamp(1.12rem,4.4vw,1.4rem);font-weight:800;line-height:1.35;word-break:break-word}
+.opts{display:grid;gap:12px}
+.opt{font:inherit;text-align:left;color:var(--txt);cursor:pointer;display:flex;gap:14px;align-items:center;
+  background:var(--card);border:2px solid var(--card-b);border-radius:18px;padding:16px;min-height:68px;
+  box-shadow:0 6px 0 rgba(0,0,0,.25);transition:transform .1s,border-color .2s,background .2s,box-shadow .1s,opacity .25s;touch-action:manipulation}
+.opt:active:not(:disabled){transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+@media(hover:hover){.opt:hover:not(:disabled){border-color:var(--pri);background:rgba(255,122,61,.16)}}
+.letter{flex:0 0 38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:900;
+  background:linear-gradient(135deg,var(--pri),var(--pri2));color:#fff}
+.otext{font-size:1rem;font-weight:600;word-break:break-word}
+.opt:disabled{cursor:default}
+.opt.dim{opacity:.45}
+.opt.correct{background:var(--ok-bg);border-color:var(--ok);opacity:1;box-shadow:0 0 0 3px rgba(34,197,94,.25),0 0 28px rgba(34,197,94,.45)}
+.opt.correct .letter{background:var(--ok)}
+.opt.wrong{background:var(--bad-bg);border-color:var(--bad);opacity:1;animation:shake .4s;box-shadow:0 0 0 3px rgba(239,68,68,.25),0 0 28px rgba(239,68,68,.4)}
+.opt.wrong .letter{background:var(--bad)}
+.opt .mark{margin-left:auto;font-size:1.3rem}
+@keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-4px)}}
+
+/* Feedback */
+.fb{display:none;flex-direction:column;gap:12px}
+.fb.show{display:flex;animation:fade .35s ease}
+.banner{border-radius:18px;padding:14px 18px;font-weight:800;font-size:1.1rem;display:flex;align-items:center;gap:10px;border:2px solid}
+.banner small{display:block;font-weight:600;font-size:.88rem;opacity:.9}
+.banner.ok{background:var(--ok-bg);border-color:var(--ok);color:#bbf7d0}
+.banner.ko{background:var(--bad-bg);border-color:var(--bad);color:#fecaca}
+.banner .ico{font-size:1.7rem}
+.expl{background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.45);border-radius:18px;padding:16px 18px}
+.expl h4{color:var(--info);font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.expl p{font-size:.98rem;color:#e2fbf6}
+.expl em{color:#fff;font-style:italic}
+
+.nextbar{position:sticky;bottom:0;padding:12px 0 calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(0deg,var(--bg3) 65%,transparent);margin-top:auto;display:none}
+.nextbar.show{display:block;animation:fade .3s}
+.nextbar .btn{width:100%}
+
+/* End */
+.end{margin:auto 0;text-align:center;padding:30px 20px}
+.trophy{font-size:4rem}
+.end h2{font-size:1.6rem;margin:6px 0 4px}
+.msg{color:var(--muted);margin-bottom:20px}
+.score-big{font-size:3.2rem;font-weight:900;color:var(--acc);line-height:1}
+.score-lbl{color:var(--muted);font-size:.9rem;margin-bottom:20px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
+.stat{background:rgba(255,255,255,.07);border:1px solid var(--card-b);border-radius:16px;padding:12px 6px}
+.stat b{display:block;font-size:1.4rem}
+.stat span{font-size:.75rem;color:var(--muted)}
+.end .btn{width:100%;max-width:380px}
+
+@media(min-width:700px){#app{padding-top:28px}.opts{grid-template-columns:1fr 1fr}.opt{min-height:84px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <section id="s-welcome" class="screen active">
+    <div class="hero card">
+      <div class="logo">🔥</div>
+      <h1>Trivia JS: Reto Definitivo MF0951_2</h1>
+      <p>30 preguntas mix de JavaScript: tipos de datos, DOM, formularios, Fetch y depuración. Aprende con una explicación didáctica tras cada respuesta.</p>
+      <div class="chips">
+        <span class="chip">🔢 Tipos y coerción</span><span class="chip">🧩 DOM</span><span class="chip">📝 Formularios</span>
+        <span class="chip">🌐 Fetch</span><span class="chip">🐞 Depuración</span>
+      </div>
+      <button class="btn" id="btn-start">Iniciar Desafío</button>
+      <div class="rules">+100 puntos por acierto · ¡las rachas multiplican tu puntuación hasta ×3!</div>
+    </div>
+  </section>
+
+  <section id="s-quiz" class="screen">
+    <div class="hud">
+      <div class="hud-row">
+        <span class="pill" id="progress-txt">Pregunta 1 de 30</span>
+        <span class="pill streak" id="streak">🔥 Racha ×1</span>
+        <span class="pill">⭐ <b id="score">0</b></span>
+      </div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="30" id="bar-wrap"><i id="bar"></i></div>
+    </div>
+    <div class="qwrap">
+      <div class="qcard card">
+        <div class="qnum" id="qnum">Pregunta 1</div>
+        <div class="qtext" id="qtext"></div>
+      </div>
+      <div class="opts" id="opts"></div>
+      <div class="fb" id="fb">
+        <div class="banner" id="banner"></div>
+        <div class="expl"><h4>💡 Explicación didáctica</h4><p id="expl"></p></div>
+      </div>
+    </div>
+    <div class="nextbar" id="nextbar"><button class="btn" id="btn-next">Siguiente Pregunta</button></div>
+  </section>
+
+  <section id="s-end" class="screen">
+    <div class="end card">
+      <div class="trophy" id="e-ico">🏆</div>
+      <h2 id="e-title">¡Desafío completado!</h2>
+      <p class="msg" id="e-msg"></p>
+      <div class="score-big" id="e-score">0</div>
+      <div class="score-lbl">puntos totales</div>
+      <div class="stats">
+        <div class="stat"><b id="e-pct">0%</b><span>de aciertos</span></div>
+        <div class="stat"><b id="e-ok">0/30</b><span>correctas</span></div>
+        <div class="stat"><b id="e-streak">0</b><span>mejor racha</span></div>
+      </div>
+      <button class="btn" id="btn-retry">Reintentar Desafío</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const QUESTIONS = [
+ {
+  "q": "¿Qué tipo de dato usa JavaScript para representar números enteros y decimales?",
+  "o": [
+   "Int para enteros y Float para decimales.",
+   "Únicamente el tipo Number.",
+   "Double para decimales y Number para enteros.",
+   "Integer y Decimal28."
+  ],
+  "c": 1,
+  "e": "En JavaScript no existen tipos numéricos independientes como int, float o double que encontramos en otros lenguajes. Todos los valores numéricos, sean enteros (ej. 42) o decimales (ej. 3.14), pertenecen al único tipo nativo Number. Internamente, el motor de JS los almacena bajo el estándar IEEE 754 de 64 bits de doble precisión."
+ },
+ {
+  "q": "¿Por qué la suma 0.1 + 0.2 da como resultado 0.30000000000000004 en JS?",
+  "o": [
+   "Por un error de sintaxis del motor de JavaScript.",
+   "Por falta de paréntesis en la expresión de la suma.",
+   "Por la conversión de decimales a binario en el estándar IEEE 754.",
+   "Por una saturación momentánea de la memoria RAM."
+  ],
+  "c": 2,
+  "e": "Al representar números en un sistema binario (ceros y unos) utilizando exactamente 64 bits en memoria, ciertas fracciones decimales en base 10 (como 0.1 o 0.2) se convierten en números periódicos infinitos en binario, provocando una pequeña imprecisión de redondeo en el último bit de precisión."
+ },
+ {
+  "q": "¿Qué valor o tipo devuelve la expresión typeof NaN en la consola?",
+  "o": [
+   "\"nan\"",
+   "\"undefined\"",
+   "\"number\"",
+   "\"error\""
+  ],
+  "c": 2,
+  "e": "Aunque las siglas NaN significan *\"Not a Number\"* (No es un Número), su categoría o tipo técnico dentro de la especificación de ECMAScript es paradójicamente \"number\". Representa el resultado de una operación matemática que ha fallado o cuya solución no es numéricamente válida en el dominio real (por ejemplo, 0 / 0 o \"hola\" * 2)."
+ },
+ {
+  "q": "¿Cuál es la forma correcta y fiable de comprobar si un valor es NaN?",
+  "o": [
+   "miValor === NaN",
+   "Number.isNaN(miValor)",
+   "miValor.isNaN()",
+   "typeof miValor === \"nan\""
+  ],
+  "c": 1,
+  "e": "Según las reglas de IEEE 754 y JS, NaN representa un valor no definido que jamás es igual a ningún otro valor, ni siquiera a sí mismo (NaN === NaN es false). Por esta razón, la única forma segura y moderna de verificar si una variable contiene un resultado matemático no válido es invocando Number.isNaN()."
+ },
+ {
+  "q": "¿Qué diferencia conceptual existe entre los valores undefined y null?",
+  "o": [
+   "undefined es ausencia implícita; null es voluntaria por el desarrollador.",
+   "undefined es un número; null es un texto.",
+   "Cambian en función del espacio que ocupan en el disco duro.",
+   "Son estrictamente idénticos en todos los contextos de ejecución."
+  ],
+  "c": 0,
+  "e": "Ambos representan la ausencia de un dato real, pero su intención semántica es distinta: undefined lo asigna automáticamente el propio motor de JS a variables declaradas pero sin valor asignado, mientras que null lo asigna explícitamente el programador para dejar constancia de que esa variable está vacía a propósito."
+ },
+ {
+  "q": "Si la variable puntos vale 0, ¿qué devuelve la expresión puntos ?? 100?",
+  "o": [
+   "100",
+   "0",
+   "undefined",
+   "NaN"
+  ],
+  "c": 1,
+  "e": "El operador de fusión de nulos o *Nullish Coalescing* (??) solo recurre al valor de la derecha si el valor de la izquierda es estrictamente null o undefined. A diferencia del operador lógico OR (||), que considera el número 0 como un valor falso (*falsy*) y lo reemplaza, ?? reconoce al 0 como un número totalmente válido y lo preserva."
+ },
+ {
+  "q": "¿Cuál de los siguientes valores se evalúa como falsy en un contexto booleano?",
+  "o": [
+   "\"0\" (cadena de texto con el carácter cero)",
+   "[] (un array sin elementos)",
+   "\"\" (una cadena de texto totalmente vacía)",
+   "{} (un objeto sin propiedades)"
+  ],
+  "c": 2,
+  "e": "En JS existe un conjunto cerrado de valores falsy: false, 0, -0, \"\" (cadena vacía), null, undefined y NaN. Cualquier otro elemento fuera de esta lista, incluyendo arrays vacíos [], objetos vacíos {} o cadenas con texto como \"0\", se evalúa siempre como verdadero (*truthy*)."
+ },
+ {
+  "q": "¿Qué resultado devuelve la expresión con coerción \"5\" - 1?",
+  "o": [
+   "\"51\"",
+   "4",
+   "NaN",
+   "Error de sintaxis"
+  ],
+  "c": 1,
+  "e": "El operador de resta - no tiene ningún uso alternativo con cadenas de texto (a diferencia de + que sirve para concatenar). Por este motivo, los operadores aritméticos restas, multiplicaciones y divisiones fuerzan siempre una coerción de tipos convirtiendo automáticamente la cadena \"5\" al número 5, ejecutando la resta matemática 5 - 1 = 4."
+ },
+ {
+  "q": "¿Qué resultado devuelve la expresión con coerción \"5\" + 1?",
+  "o": [
+   "6",
+   "\"51\"",
+   "NaN",
+   "undefined"
+  ],
+  "c": 1,
+  "e": "El operador suma + está sobrecargado: sirve tanto para sumar números como para concatenar textos. Las reglas del lenguaje establecen que si al menos uno de los dos operandos es de tipo String, se da prioridad absoluta a la concatenación, convirtiendo el número 1 en texto \"1\" y unióndolo a \"5\", dando \"51\"."
+ },
+ {
+  "q": "¿Qué convención de nombres estándar se aplica en JS para precioBaseEntrada?",
+  "o": [
+   "PascalCase",
+   "snake_case",
+   "camelCase",
+   "kebab-case"
+  ],
+  "c": 2,
+  "e": "En JavaScript, la convención estándar para nombrar variables, propiedades y funciones es camelCase. Consiste en comenzar la primera palabra en minúscula y cada palabra posterior unida a ella con su primera letra en mayúscula sin espacios ni guiones."
+ },
+ {
+  "q": "¿Para qué sirve crear un document.createDocumentFragment() en memoria?",
+  "o": [
+   "Para acelerar las peticiones a APIs HTTP externas.",
+   "Para evitar múltiples reflujos (*reflows*) al inyectar nodos en el DOM real.",
+   "Para guardar variables de forma persistente en localStorage.",
+   "Para validar que un formulario no tenga campos vacíos."
+  ],
+  "c": 1,
+  "e": "Un DocumentFragment es un contenedor virtual que reside en memoria RAM. Insertar elementos en él dentro de un bucle no genera ningún impacto visual en la pantalla. Al finalizar el montaje, volcamos todo el fragmento al DOM real de una sola vez con appendChild(), reduciendo las operaciones de repintado del navegador a una sola."
+ },
+ {
+  "q": "En Delegación de Eventos, ¿qué método busca hacia arriba el ancestro más cercano?",
+  "o": [
+   "evento.target.parentElement",
+   "evento.target.findParent()",
+   "evento.target.closest(\".clase\")",
+   "evento.target.querySelector()"
+  ],
+  "c": 2,
+  "e": "El método .closest(\".clase\") analiza el nodo sobre el que se hizo clic (evento.target) y busca hacia arriba en la jerarquía del árbol HTML hasta encontrar el primer ancestro que coincida con el selector CSS indicado. Si no existe ninguno, devuelve null."
+ },
+ {
+  "q": "¿Qué ventaja principal aporta la Delegación de Eventos en listados dinámicos?",
+  "o": [
+   "Que los botones cambian de estilo CSS automáticamente.",
+   "Asignar un único escuchador de eventos en el contenedor padre.",
+   "Prevenir ataques XSS en la entrada de datos.",
+   "Convertir la lista de elementos en un almacenamiento SQL."
+  ],
+  "c": 1,
+  "e": "En lugar de adjuntar múltiples addEventListener a cada elemento o botón individual (y tener que reasignarlos cuando se añaden nuevos ítems), la delegación de eventos consiste en colocar un único escuchador en el contenedor padre. Cuando un hijo es pulsado, el evento escala (*bubbling*) y el padre lo gestiona mediante event.target."
+ },
+ {
+  "q": "¿Qué método de array elimina elementos en un índice específico (array.splice(i, 1))?",
+  "o": [
+   ".pop()",
+   ".splice()",
+   ".slice()",
+   ".shift()"
+  ],
+  "c": 1,
+  "e": "El método mutador .splice(indiceInicio, cantidadABorrar) modifica el array original eliminando la cantidad de elementos especificada a partir de la posición elegida. Es fundamental para manipular arreglos de datos sincronizados con la interfaz mediante atributos data-index."
+ },
+ {
+  "q": "¿Qué método inyecta cadenas HTML al final de un contenedor sin borrar sus hijos?",
+  "o": [
+   "contenedor.innerHTML = ...",
+   "contenedor.insertAdjacentHTML(\"beforeend\", ...)",
+   "contenedor.appendChildText(...)",
+   "contenedor.addHTML(...)"
+  ],
+  "c": 1,
+  "e": "La asignación directa innerHTML = destruye todos los nodos hijos previos y sus escuchadores de eventos al reescribir el contenido. En cambio, .insertAdjacentHTML(\"beforeend\", cadena) inserta los nuevos elementos HTML al final del contenedor preservando los nodos ya existentes."
+ },
+ {
+  "q": "¿Qué propiedad nativa de los inputs nos permite inspeccionar sus errores de validación?",
+  "o": [
+   ".checkState",
+   ".validity",
+   ".validationFlags",
+   ".errors"
+  ],
+  "c": 1,
+  "e": "La propiedad .validity devuelve un objeto ValidityState con indicadores booleanos para saber qué regla de validación ha fallado (ejemplo: valueMissing si el campo está vacío, typeMismatch si el formato de e-mail es erróneo o tooShort si no alcanza la longitud mínima)."
+ },
+ {
+  "q": "¿Qué indica la propiedad booleana validity.valueMissing?",
+  "o": [
+   "Que el campo contiene caracteres no numéricos.",
+   "Que la contraseña no cumple la complejidad mínima.",
+   "Que un campo obligatorio (required) se ha dejado vacío.",
+   "Que la dirección de correo es sintácticamente inválida."
+  ],
+  "c": 2,
+  "e": "El indicador valueMissing del objeto .validity pasa automáticamente a true cuando el elemento HTML posee el atributo required pero el usuario no ha introducido ningún valor o texto en su interior."
+ },
+ {
+  "q": "¿Qué evalúa la Expresión Regular /^LOTE-\\d{4}-[A-Z]$/?",
+  "o": [
+   "Cualquier texto que contenga cuatro letras minúsculas.",
+   "Cadenas que empiecen por \"LOTE-\", 4 dígitos y 1 letra mayúscula.",
+   "Un código postal compuesto por dígitos del 1 al 4.",
+   "Un correo electrónico con dominio corporativo."
+  ],
+  "c": 1,
+  "e": "El ancla ^ indica el inicio de la cadena, LOTE- exige ese texto literal, \\d{4} requiere exactamente cuatro dígitos numéricos, - es un guion obligatorio y [A-Z]$ impone finalizar con una única letra mayúscula (ejemplo: LOTE-1024-X)."
+ },
+ {
+  "q": "¿Para qué se utiliza el evento blur en los campos de entrada de un formulario?",
+  "o": [
+   "Para detectar el momento en que el usuario hace clic dentro del input.",
+   "Para vaciar la caja de texto al presionar la tecla Enter.",
+   "Para validar el campo justo cuando el usuario pierde el foco.",
+   "Para bloquear el pegado de texto desde el portapapeles."
+  ],
+  "c": 2,
+  "e": "El evento blur se dispara cuando un campo pierde el foco de la interacción (al hacer clic fuera o tabular hacia otro elemento). Es el momento idóneo en términos de UX para validar individualmente el valor introducido sin interrumpir la escritura."
+ },
+ {
+  "q": "¿Por qué es una buena práctica deshabilitar el botón (disabled = true) al enviar un formulario?",
+  "o": [
+   "Para evitar peticiones o envíos duplicados por clics repetidos.",
+   "Para forzar el reajuste inmediato de los campos del formulario.",
+   "Porque JavaScript lo exige antes de invocar la función fetch().",
+   "Para desactivar los estilos CSS visuales."
+  ],
+  "c": 0,
+  "e": "Durante la tramitación asíncrona de datos, la latencia de la red puede llevar al usuario a hacer clic de forma compulsiva. Deshabilitar el botón previene inserciones dobles en base de datos o cobros duplicados."
+ },
+ {
+  "q": "¿En qué bloque debemos reactivar SIEMPRE el botón de envío tras una llamada fetch?",
+  "o": [
+   "Dentro del bloque try",
+   "Dentro del bloque catch",
+   "Dentro del bloque finally",
+   "Fuera de la función asíncrona"
+  ],
+  "c": 2,
+  "e": "El bloque finally se ejecuta siempre, tanto si la Promesa se resolvió con éxito en el try como si fue capturado un error en el catch. Garantiza que el botón recupere su estado activo bajo cualquier desenlace."
+ },
+ {
+  "q": "¿Qué pseudo-clase CSS3 moderna aplica estilos a campos fallidos SOLO tras la interacción del usuario?",
+  "o": [
+   "input:invalid",
+   "input:user-invalid",
+   "input:error-state",
+   "input:wrong"
+  ],
+  "c": 1,
+  "e": "A diferencia de :invalid (que marca los campos en rojo desde la carga inicial del documento antes de interactuar), la pseudo-clase :user-invalid solo se activa después de que el usuario ha interactuado directamente con el control y ha dejado un valor incorrecto."
+ },
+ {
+  "q": "¿Qué función cumple la palabra reservada async antepuesta a una función?",
+  "o": [
+   "Permite usar await dentro de ella y hace que devuelva una Promesa.",
+   "Ejecuta el código en múltiples hilos del procesador.",
+   "Cancela llamadas de red que sobrepasen cierto tiempo.",
+   "Transforma variables locales en JSON automáticamente."
+  ],
+  "c": 0,
+  "e": "La palabra reservada async indica al motor de JS que la función gestionará código asíncrono y retornará implícitamente una Promesa. Además, habilita el uso de la palabra clave await dentro de su cuerpo."
+ },
+ {
+  "q": "¿Qué ocurre cuando anteponemos await a una llamada fetch()?",
+  "o": [
+   "Convierte el formulario a un objeto plano.",
+   "Pausa la ejecución dentro de la función hasta resolver la Promesa.",
+   "Encripta la URL de la petición HTTP.",
+   "Cancela la renderización del archivo HTML."
+  ],
+  "c": 1,
+  "e": "La instrucción await congela la ejecución del código dentro de la función async hasta que la Promesa de la llamada fetch() se resuelva y entregue el objeto Response."
+ },
+ {
+  "q": "¿Qué sucede por defecto si fetch() recibe un código HTTP 404 (Not Found)?",
+  "o": [
+   "Salta automáticamente al bloque de captura catch.",
+   "Resuelve la Promesa con la propiedad respuesta.ok en false.",
+   "Detiene la ejecución del script en la consola.",
+   "Recarga la página web automáticamente."
+  ],
+  "c": 1,
+  "e": "La función fetch() solo rechaza la Promesa (saltando al catch) cuando ocurre un fallo de red a nivel de socket o conexión física. Si el servidor responde con un código de error HTTP (como 404 o 500), la Promesa se resuelve pero estableciendo respuesta.ok como false."
+ },
+ {
+  "q": "¿Por qué es necesario usar await sobre la instrucción respuesta.json()?",
+  "o": [
+   "Porque transforma HTML directamente en reglas CSS.",
+   "Porque la lectura y el parseo del cuerpo de la respuesta es asíncrono.",
+   "Porque elimina los espacios en blanco sobrantes.",
+   "Para evitar que el formulario ejecute un refresco."
+  ],
+  "c": 1,
+  "e": "El método .json() lee el flujo binario de datos devuelto por la red y lo transforma en objetos de JS. Como este proceso de lectura de flujo es asíncrono y devuelve una Promesa, se debe aplicar await para extraer los datos listos."
+ },
+ {
+  "q": "¿Qué cabecera (header) indica al servidor que el cuerpo enviado en la petición es un JSON?",
+  "o": [
+   "'Accept': 'text/html'",
+   "'Content-Type': 'application/json'",
+   "'Data-Type': 'json/javascript'",
+   "'Header-Format': 'json'"
+  ],
+  "c": 1,
+  "e": "Al realizar peticiones POST, PUT o PATCH enviando datos serializados con JSON.stringify(), es obligatorio establecer en las cabeceras 'Content-Type': 'application/json' para que el backend sepa cómo interpretar la carga recibida."
+ },
+ {
+  "q": "¿Qué error común provoca que un input devuelva un texto al calcular subtotales o precios?",
+  "o": [
+   "Que el operador + concatene los valores como cadenas en lugar de sumar números.",
+   "Que la consola de JavaScript muestre un error fatal de sintaxis.",
+   "Que el servidor remoto rechace la solicitud con código 404.",
+   "Que el método de array .reduce() devuelva siempre undefined."
+  ],
+  "c": 0,
+  "e": "La propiedad .value de los inputs HTML entrega siempre un valor de tipo String. Si intentamos sumar directamente estos valores con + sin convertirlos antes con Number(), JavaScript ejecutará una concatenación de texto (ej. \"2\" + \"3\" = \"23\")."
+ },
+ {
+  "q": "¿Qué ocurre al evaluar una condición condicional con la sintaxis if (dpto = \"desarrollo\")?",
+  "o": [
+   "Compara correctamente si dpto es igual a \"desarrollo\".",
+   "Lanza un error de sintaxis y detiene la aplicación.",
+   "Asigna \"desarrollo\" a dpto y evalúa la condición siempre como true.",
+   "Convierte automáticamente la variable en undefined."
+  ],
+  "c": 2,
+  "e": "Un fallo común detectado durante la depuración es usar un único signo = (asignación) en lugar de == o === (comparación). Esto asigna la cadena dada a la variable y evalúa la expresión como un valor *truthy*, haciendo que el bloque condicional se ejecute siempre."
+ },
+ {
+  "q": "¿Qué utilidad principal ofrece el panel *Sources* de las DevTools del navegador?",
+  "o": [
+   "Modificar archivos multimedia directamente en el servidor.",
+   "Pausar la ejecución con puntos de interrupción (*breakpoints*) e inspeccionar variables.",
+   "Medir el consumo de energía y disco duro del sistema operativo.",
+   "Diseñar vectores y componentes gráficos SVG."
+  ],
+  "c": 1,
+  "e": "El panel *Sources* permite inspeccionar el código fuente ejecutable, definir puntos de pausa (*breakpoints*), avanzar paso a paso por las instrucciones e inspeccionar el estado exacto de las variables en la pila de llamadas (*Call Stack*)."
+ }
+];
+
+(() => {
+  const $ = id => document.getElementById(id);
+  const screens = { welcome: $('s-welcome'), quiz: $('s-quiz'), end: $('s-end') };
+  const LETTERS = ['A','B','C','D'];
+  const TOTAL = QUESTIONS.length;
+  let idx, score, correctCount, streak, bestStreak, answered;
+
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rich = s => esc(s).replace(/\*(\S[^*]*?\S)\*/g,'<em>$1</em>');
+  const show = name => {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  };
+  const multiplier = s => 1 + 0.5 * Math.min(s, 4);   // racha previa: x1, x1.5, x2, x2.5, x3
+  const fmtMult = m => '×' + (Number.isInteger(m) ? m : m.toFixed(1));
+
+  function start(){
+    idx = 0; score = 0; correctCount = 0; streak = 0; bestStreak = 0;
+    $('score').textContent = '0';
+    updateStreak();
+    show('quiz');
+    render();
+  }
+
+  function updateStreak(){
+    const el = $('streak');
+    if (streak >= 2){
+      el.textContent = '🔥 Racha ' + streak + ' · ' + fmtMult(multiplier(streak));
+      el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+    } else el.classList.remove('on');
+  }
+
+  function render(){
+    const q = QUESTIONS[idx];
+    answered = false;
+    $('progress-txt').textContent = `Pregunta ${idx+1} de ${TOTAL}`;
+    $('bar').style.width = (idx / TOTAL * 100) + '%';
+    $('bar-wrap').setAttribute('aria-valuenow', idx);
+    $('qnum').textContent = `Pregunta ${idx+1}`;
+    $('qtext').innerHTML = rich(q.q);
+    $('fb').classList.remove('show');
+    $('nextbar').classList.remove('show');
+    const box = $('opts'); box.innerHTML = '';
+    q.o.forEach((text, i) => {
+      const b = document.createElement('button');
+      b.className = 'opt'; b.type = 'button'; b.dataset.i = i;
+      b.innerHTML = `<span class="letter">${LETTERS[i]}</span><span class="otext">${rich(text)}</span><span class="mark"></span>`;
+      b.addEventListener('click', () => choose(i));
+      box.appendChild(b);
+    });
+    $('btn-next').textContent = idx === TOTAL-1 ? 'Ver Resultados' : 'Siguiente Pregunta';
+  }
+
+  function choose(i){
+    if (answered) return;
+    answered = true;
+    const q = QUESTIONS[idx];
+    const ok = i === q.c;
+    const btns = [...$('opts').children];
+    btns.forEach((b, k) => {
+      b.disabled = true;
+      if (k === q.c){ b.classList.add('correct'); b.querySelector('.mark').textContent = '✓'; }
+      else if (k === i){ b.classList.add('wrong'); b.querySelector('.mark').textContent = '✗'; }
+      else b.classList.add('dim');
+    });
+
+    const banner = $('banner');
+    if (ok){
+      const pts = Math.round(100 * multiplier(streak));
+      score += pts; correctCount++; streak++; bestStreak = Math.max(bestStreak, streak);
+      $('score').textContent = score;
+      banner.className = 'banner ok';
+      banner.innerHTML = `<span class="ico">🎉</span><div>¡Correcto!<small>+${pts} puntos${pts>100?' (bonus de racha)':''}</small></div>`;
+    } else {
+      streak = 0;
+      banner.className = 'banner ko';
+      banner.innerHTML = `<span class="ico">😕</span><div>¡Respuesta incorrecta!<small>La opción correcta era la ${LETTERS[q.c]}. Se ha perdido la racha.</small></div>`;
+    }
+    updateStreak();
+    $('expl').innerHTML = rich(q.e);
+    $('fb').classList.add('show');
+    $('nextbar').classList.add('show');
+    $('bar').style.width = ((idx+1) / TOTAL * 100) + '%';
+    setTimeout(() => $('fb').scrollIntoView({behavior:'smooth',block:'nearest'}), 80);
+  }
+
+  function next(){
+    if (!answered) return;
+    if (idx < TOTAL-1){ idx++; render(); window.scrollTo({top:0,behavior:'smooth'}); }
+    else finish();
+  }
+
+  function finish(){
+    const pct = Math.round(correctCount / TOTAL * 100);
+    let ico, title, msg;
+    if (pct === 100){ ico='🏆'; title='¡Perfecto!'; msg='Dominas los tipos de datos, el DOM, los formularios y Fetch como un auténtico máster del JavaScript.'; }
+    else if (pct >= 80){ ico='🚀'; title='¡Excelente trabajo!'; msg='Tienes un nivel sobresaliente. Repasa las pocas que fallaste y lo bordas.'; }
+    else if (pct >= 60){ ico='💪'; title='¡Muy bien!'; msg='Buena base. Con un pequeño repaso de las explicaciones llegarás a la excelencia.'; }
+    else if (pct >= 40){ ico='📚'; title='Vas por buen camino'; msg='Aún hay conceptos por afianzar. Reintenta y lee con calma cada explicación.'; }
+    else { ico='🌱'; title='¡No te rindas!'; msg='Todo experto empezó así. Inténtalo de nuevo prestando atención a las explicaciones didácticas.'; }
+    $('e-ico').textContent = ico;
+    $('e-title').textContent = title;
+    $('e-msg').textContent = msg;
+    $('e-score').textContent = score.toLocaleString('es-ES');
+    $('e-pct').textContent = pct + '%';
+    $('e-ok').textContent = `${correctCount}/${TOTAL}`;
+    $('e-streak').textContent = bestStreak;
+    $('bar').style.width = '100%';
+    show('end');
+  }
+
+  $('btn-start').addEventListener('click', start);
+  $('btn-retry').addEventListener('click', start);
+  $('btn-next').addEventListener('click', next);
+
+  document.addEventListener('keydown', e => {
+    if (!screens.quiz.classList.contains('active')) return;
+    const k = e.key.toUpperCase();
+    if (!answered && LETTERS.includes(k)) choose(LETTERS.indexOf(k));
+    else if (!answered && ['1','2','3','4'].includes(k)) choose(+k-1);
+    else if (answered && e.key === 'Enter'){ e.preventDefault(); next(); }
+  });
+})();
+</script>
+</body>
+</html>
